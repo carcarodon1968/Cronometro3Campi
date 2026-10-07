@@ -1,12 +1,24 @@
-name: Build Android APK
+name: Build APK & Deploy Web App Link
 
 on:
   push:
     branches: ["main", "master"]
   workflow_dispatch:
 
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
 jobs:
-  build_apk:
+  build_and_deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -48,6 +60,18 @@ jobs:
           '
           npm install --legacy-peer-deps
           npm run build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Web App to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
+      - name: Publish Web App Link on GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
 
       - name: Build Installable Android APK
         run: |

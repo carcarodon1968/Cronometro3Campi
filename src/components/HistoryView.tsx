@@ -54,11 +54,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
   const categories = useMemo(() => {
     const set = new Set<string>([
       'Tutte',
+      'Diga Sud',
+      'Diga Nord',
       'Flusso',
-      'Sport',
-      'Laboratorio',
-      'Produzione',
-      'Generale',
     ]);
     sessions.forEach((s) => {
       if (s.category) set.add(s.category);
@@ -221,7 +219,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Cerca per titolo sessione, categoria o note..."
+              placeholder="Cerca per Nome misura, Categoria o note..."
               className="w-full min-h-[42px] pl-10 pr-4 py-2 text-sm bg-slate-50 dark:bg-slate-800/70 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white placeholder:text-slate-400 focus:outline-none focus:border-orange-500"
             />
           </div>
@@ -312,27 +310,25 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                           type="text"
                           value={editLabel}
                           onChange={(e) => setEditLabel(e.target.value)}
-                          className="min-h-[38px] px-3 py-1.5 text-sm font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                          placeholder="Etichetta sessione"
+                          className="min-h-[38px] px-3 py-1.5 text-center text-sm font-semibold bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-white"
+                          placeholder="Nome misura"
                         />
                         <select
                           value={editCategory}
                           onChange={(e) => setEditCategory(e.target.value)}
-                          className="min-h-[38px] px-3 py-1.5 text-xs font-medium bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                          className="min-h-[38px] px-3 py-1.5 text-center [text-align-last:center] text-xs font-bold bg-slate-800 border border-slate-700 rounded-lg text-white"
                         >
+                          <option value="Diga Sud">Diga Sud</option>
+                          <option value="Diga Nord">Diga Nord</option>
                           <option value="Flusso">Flusso</option>
-                          <option value="Sport">Sport</option>
-                          <option value="Laboratorio">Laboratorio</option>
-                          <option value="Produzione">Produzione</option>
-                          <option value="Generale">Generale</option>
                         </select>
                         <input
                           type="text"
                           inputMode="decimal"
                           value={editContainer}
                           onChange={(e) => setEditContainer(e.target.value)}
-                          className="min-h-[38px] w-32 px-3 py-1.5 text-xs font-mono-tabular bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
-                          placeholder="Contenitore"
+                          className="min-h-[38px] w-36 px-3 py-1.5 text-center text-xs font-mono-tabular bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-900 dark:text-white"
+                          placeholder="Litri contenitore"
                         />
                         <input
                           type="text"
@@ -357,12 +353,18 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                     ) : (
                       <>
-                        <h3 className="text-base font-bold text-slate-900 dark:text-white">
-                          {item.label}
-                        </h3>
-                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
-                          <span>{item.category}</span>
-                          <span aria-hidden="true">·</span>
+                        <div className="flex flex-wrap items-center gap-2.5">
+                          <span className="text-base font-bold text-cyan-400">
+                            {item.category}
+                          </span>
+                          <span aria-hidden="true" className="text-xs font-bold text-cyan-400 leading-none">
+                            •
+                          </span>
+                          <h3 className="text-base font-bold text-cyan-400">
+                            {item.label}
+                          </h3>
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
                           <span>{dateStr}</span>
                           <span aria-hidden="true">·</span>
                           <span>{item.count}/3 misure</span>
@@ -370,8 +372,8 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                             item.containerAmount !== undefined && (
                               <>
                                 <span aria-hidden="true">·</span>
-                                <span className="font-mono-tabular text-slate-700 dark:text-slate-200 font-semibold">
-                                  Contenitore: {item.containerAmount}
+                                <span className="font-mono-tabular text-slate-200 font-semibold">
+                                  Contenitore Lt: {item.containerAmount}
                                 </span>
                               </>
                             )}
@@ -382,7 +384,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                           {item.notes && (
                             <>
                               <span aria-hidden="true">·</span>
-                              <span className="text-slate-600 dark:text-slate-300 italic">
+                              <span className="text-slate-300 italic">
                                 {item.notes}
                               </span>
                             </>
@@ -408,9 +410,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                       </div>
                     )}
 
-                    <div className="text-left md:text-right">
+                    <div className="text-center">
                       <span className="text-[11px] font-medium text-slate-500 dark:text-slate-400 block">
-                        Media Tempi ({item.count}/3)
+                        Media tempi
                       </span>
                       <span className="text-2xl font-bold font-mono-tabular text-orange-600 dark:text-orange-400">
                         {formatTimeParts(item.finalAverage).fullMs}

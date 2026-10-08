@@ -57,8 +57,8 @@ export default function App() {
   const [time2, setTime2] = useState<number | null>(null);
   const [time3, setTime3] = useState<number | null>(null);
 
-  // Top Session Inputs (Placed above the stopwatch: Categoria with Flusso, Etichetta Sessione, Contenitore empty by default)
-  const [sessionCategory, setSessionCategory] = useState<string>('Flusso');
+  // Top Session Inputs (Placed above the stopwatch: Categoria with Diga Sud, Nome Misura, Litri Contenitore empty by default)
+  const [sessionCategory, setSessionCategory] = useState<string>('Diga Sud');
   const [sessionLabel, setSessionLabel] = useState<string>('');
   const [containerInput, setContainerInput] = useState<string>('');
   const [containerError, setContainerError] = useState<boolean>(false);
@@ -198,7 +198,7 @@ export default function App() {
     if (validContainer === null) {
       setContainerError(true);
       containerInputRef.current?.focus();
-      showToast('Compila obbligatoriamente il campo Contenitore prima di avviare il cronometro');
+      showToast('Compila obbligatoriamente il campo Litri contenitore prima di avviare il cronometro');
       return;
     }
 
@@ -394,7 +394,7 @@ export default function App() {
     const demoRecords: MeasurementRecord[] = [
       {
         id: 'demo_flusso_1',
-        label: 'Portata Ugello Linea 1',
+        label: 'Misurazione Portata Principale',
         category: 'Flusso',
         notes: 'Recipiente tarato da 10 litri',
         containerAmount: 10,
@@ -414,54 +414,12 @@ export default function App() {
         createdAt: now - 3600_000 * 18,
       },
       {
-        id: 'demo_flusso_2',
-        label: 'Dosaggio Pompa Peristaltica',
-        category: 'Flusso',
-        notes: 'Becher graduato 250 ml',
-        containerAmount: 250,
-        flowRatePerSec: 250 / 12.5,
-        time1: 12550,
-        time2: 12450,
-        time3: 12500,
-        averageAfterStop1: 12550,
-        averageAfterStop2: 12500,
-        averageAfterStop3: 12500,
-        finalAverage: 12500,
-        minTime: 12450,
-        maxTime: 12550,
-        spread: 100,
-        count: 3,
-        mode: 'independent',
-        createdAt: now - 3600_000 * 10,
-      },
-      {
-        id: 'demo_prod_3',
-        label: 'Scarico Tramoggia Granuli',
-        category: 'Produzione',
-        notes: 'Contenitore 25 kg',
-        containerAmount: 25,
-        flowRatePerSec: 25 / 20.0,
-        time1: 20120,
-        time2: 19940,
-        time3: 19940,
-        averageAfterStop1: 20120,
-        averageAfterStop2: 20030,
-        averageAfterStop3: 20000,
-        finalAverage: 20000,
-        minTime: 19940,
-        maxTime: 20120,
-        spread: 180,
-        count: 3,
-        mode: 'independent',
-        createdAt: now - 3600_000 * 4,
-      },
-      {
-        id: 'demo_lab_4',
-        label: 'Buretta Calibrazione #2',
-        category: 'Laboratorio',
-        notes: 'Contenitore 50 ml acqua distillata',
-        containerAmount: 50,
-        flowRatePerSec: 50 / 8.0,
+        id: 'demo_diga_sud_2',
+        label: 'Scarico Controllo Mattina',
+        category: 'Diga Sud',
+        notes: 'Recipiente da 20 litri',
+        containerAmount: 20,
+        flowRatePerSec: 20 / 8.0,
         time1: 8050,
         time2: 7950,
         time3: 8000,
@@ -474,13 +432,55 @@ export default function App() {
         spread: 100,
         count: 3,
         mode: 'independent',
+        createdAt: now - 3600_000 * 10,
+      },
+      {
+        id: 'demo_diga_nord_3',
+        label: 'Rilevazione Condotta Est',
+        category: 'Diga Nord',
+        notes: 'Contenitore 50 litri',
+        containerAmount: 50,
+        flowRatePerSec: 50 / 12.5,
+        time1: 12550,
+        time2: 12450,
+        time3: 12500,
+        averageAfterStop1: 12550,
+        averageAfterStop2: 12500,
+        averageAfterStop3: 12500,
+        finalAverage: 12500,
+        minTime: 12450,
+        maxTime: 12550,
+        spread: 100,
+        count: 3,
+        mode: 'independent',
+        createdAt: now - 3600_000 * 4,
+      },
+      {
+        id: 'demo_diga_sud_4',
+        label: 'Verifica Pomeridiana',
+        category: 'Diga Sud',
+        notes: 'Contenitore 25 litri',
+        containerAmount: 25,
+        flowRatePerSec: 25 / 10.0,
+        time1: 10100,
+        time2: 9900,
+        time3: 10000,
+        averageAfterStop1: 10100,
+        averageAfterStop2: 10000,
+        averageAfterStop3: 10000,
+        finalAverage: 10000,
+        minTime: 9900,
+        maxTime: 10100,
+        spread: 200,
+        count: 3,
+        mode: 'independent',
         createdAt: now - 3600_000 * 1,
       },
     ];
 
     const updated = await importSessionsToDB(demoRecords);
     setSessions(updated);
-    showToast('4 sessioni di esempio con Flusso e Contenitore caricate');
+    showToast('4 sessioni di esempio caricate nel database locale');
   };
 
   const formattedLive = formatTimeParts(elapsedMs);
@@ -529,7 +529,7 @@ export default function App() {
           }}
           className="text-lg font-bold tracking-tight text-white font-display whitespace-nowrap"
         >
-          CronoTri
+          Cronometro 3 misure
         </a>
 
         {/* Zone 2: Clean text navigation links */}
@@ -600,11 +600,11 @@ export default function App() {
               className="bg-slate-900 border border-slate-800 rounded-2xl p-5"
             >
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-start">
-                {/* 1. Categoria (con Flusso) */}
+                {/* 1. Categoria (Diga Sud, Diga Nord, Flusso) */}
                 <div>
                   <label
                     htmlFor="select-categoria"
-                    className="block text-xs font-semibold text-slate-300 mb-1.5"
+                    className="block text-center text-sm font-bold text-white mb-1.5"
                   >
                     Categoria
                   </label>
@@ -612,23 +612,21 @@ export default function App() {
                     id="select-categoria"
                     value={sessionCategory}
                     onChange={(e) => setSessionCategory(e.target.value)}
-                    className="w-full min-h-[44px] px-3.5 py-2 text-sm font-medium bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-orange-500 cursor-pointer"
+                    className="w-full min-h-[44px] px-3.5 py-2 text-center [text-align-last:center] text-sm font-bold bg-slate-950 border border-slate-700 rounded-xl text-white focus:outline-none focus:border-orange-500 cursor-pointer"
                   >
+                    <option value="Diga Sud">Diga Sud</option>
+                    <option value="Diga Nord">Diga Nord</option>
                     <option value="Flusso">Flusso</option>
-                    <option value="Sport">Sport</option>
-                    <option value="Laboratorio">Laboratorio</option>
-                    <option value="Produzione">Produzione</option>
-                    <option value="Generale">Generale</option>
                   </select>
                 </div>
 
-                {/* 2. Etichetta Sessione */}
+                {/* 2. Nome misura */}
                 <div>
                   <label
                     htmlFor="input-etichetta-sessione"
-                    className="block text-xs font-semibold text-slate-300 mb-1.5"
+                    className="block text-center text-sm font-bold text-white mb-1.5"
                   >
-                    Etichetta Sessione
+                    Nome misura
                   </label>
                   <input
                     id="input-etichetta-sessione"
@@ -636,18 +634,17 @@ export default function App() {
                     value={sessionLabel}
                     onChange={(e) => setSessionLabel(e.target.value)}
                     placeholder={`es. Misurazione #${sessions.length + 1}`}
-                    className="w-full min-h-[44px] px-3.5 py-2 text-sm bg-slate-950 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500"
+                    className="w-full min-h-[44px] px-3.5 py-2 text-center text-sm font-semibold bg-slate-950 border border-slate-700 rounded-xl text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500"
                   />
                 </div>
 
-                {/* 3. Contenitore (Obbligatorio prima dell'avvio del cronometro, vuoto di default) */}
+                {/* 3. Litri contenitore (Obbligatorio prima dell'avvio del cronometro, vuoto di default) */}
                 <div>
                   <label
                     htmlFor="input-contenitore"
-                    className="block text-xs font-semibold text-slate-300 mb-1.5"
+                    className="block text-center text-sm font-bold text-white mb-1.5"
                   >
-                    Contenitore (Quantitativo recipiente){' '}
-                    <span className="text-orange-400">*</span>
+                    Litri contenitore <span className="text-orange-400">*</span>
                   </label>
                   <input
                     ref={containerInputRef}
@@ -661,17 +658,17 @@ export default function App() {
                         setContainerError(false);
                       }
                     }}
-                    placeholder="Inserisci quantità (obbligatorio)"
-                    className={`w-full min-h-[44px] px-3.5 py-2 text-sm font-mono-tabular font-semibold bg-slate-950 border rounded-xl text-white placeholder:text-slate-500 focus:outline-none transition-colors ${
+                    placeholder="Inserisci litri (obbligatorio)"
+                    className={`w-full min-h-[44px] px-3.5 py-2 text-center text-sm font-mono-tabular font-semibold bg-slate-950 border rounded-xl text-white placeholder:text-slate-500 focus:outline-none transition-colors ${
                       containerError
                         ? 'border-rose-500 ring-2 ring-rose-500/25'
                         : 'border-slate-700 focus:border-orange-500'
                     }`}
                   />
                   {containerError && (
-                    <p className="mt-1.5 text-xs font-medium text-rose-400 flex items-center gap-1.5">
+                    <p className="mt-1.5 text-xs font-medium text-rose-400 flex items-center justify-center gap-1.5">
                       <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-                      <span>Inserisci il quantitativo del Contenitore prima di avviare</span>
+                      <span>Inserisci i Litri contenitore prima di avviare</span>
                     </p>
                   )}
                 </div>
@@ -1111,20 +1108,26 @@ export default function App() {
                         className="py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3"
                       >
                         <div>
-                          <p className="text-sm font-bold text-white">
-                            {item.label}
-                          </p>
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className="text-sm font-bold text-cyan-400">
+                              {item.category}
+                            </span>
+                            <span aria-hidden="true" className="text-xs font-bold text-cyan-400 leading-none">
+                              •
+                            </span>
+                            <span className="text-sm font-bold text-cyan-400">
+                              {item.label}
+                            </span>
+                          </div>
                           {/* Clean unboxed metadata with · separators */}
-                          <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-slate-400 font-mono-tabular">
-                            <span className="font-sans">{item.category}</span>
-                            <span aria-hidden="true">·</span>
-                            <span className="font-sans">{timeStr}</span>
+                          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-300 font-mono-tabular">
+                            <span className="font-sans text-slate-400">{timeStr}</span>
                             {item.containerAmount !== null &&
                               item.containerAmount !== undefined && (
                                 <>
                                   <span aria-hidden="true">·</span>
-                                  <span className="text-slate-300 font-semibold">
-                                    Contenitore: {item.containerAmount}
+                                  <span className="text-slate-200 font-semibold">
+                                    Contenitore Lt: {item.containerAmount}
                                   </span>
                                 </>
                               )}
@@ -1149,9 +1152,9 @@ export default function App() {
                             </div>
                           )}
 
-                          <div className="text-left sm:text-right">
+                          <div className="text-center">
                             <span className="text-[11px] text-slate-400 block">
-                              Media ({item.count}/3)
+                              Media tempi
                             </span>
                             <span className="text-lg font-bold font-mono-tabular text-orange-400">
                               {formatTimeParts(item.finalAverage).fullMs}

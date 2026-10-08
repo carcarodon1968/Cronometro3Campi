@@ -15,8 +15,8 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png', 'pwa-maskable-512x512.png'],
         manifest: {
           id: './',
-          name: 'CronoTri — Cronometro 3 Misure & Media',
-          short_name: 'CronoTri',
+          name: 'Cronometro 3 misure',
+          short_name: 'Cronometro 3 misure',
           description: 'Cronometro di precisione per Android con 3 campi di misura automatici, calcolo della media a ogni stop e storico in database locale.',
           theme_color: '#0F172A',
           background_color: '#020617',

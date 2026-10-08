@@ -21,7 +21,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('Tutte');
 
   const categories = useMemo(() => {
-    const set = new Set<string>(['Tutte', 'Flusso']);
+    const set = new Set<string>(['Tutte', 'Diga Sud', 'Diga Nord', 'Flusso']);
     sessions.forEach((s) => {
       if (s.category) set.add(s.category);
     });
@@ -188,8 +188,8 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               <p className="mt-2 text-2xl font-bold font-mono-tabular text-slate-900 dark:text-white">
                 ±{formatTimeParts(summary.mostConsistentSession.spread).fullMs}
               </p>
-              <p className="mt-1 text-xs text-slate-500 dark:text-slate-400 truncate">
-                {summary.mostConsistentSession.label}
+              <p className="mt-1 text-xs font-semibold text-cyan-400 truncate">
+                {summary.mostConsistentSession.category} · {summary.mostConsistentSession.label}
               </p>
             </div>
 
@@ -306,7 +306,10 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
                       />
                     </div>
 
-                    <p className="mt-2 text-xs font-medium text-slate-700 dark:text-slate-300 truncate max-w-full">
+                    <p className="mt-2 text-xs font-bold text-cyan-400 truncate max-w-full">
+                      {session.category}
+                    </p>
+                    <p className="text-xs font-bold text-cyan-400 truncate max-w-full">
                       {session.label}
                     </p>
                     <button

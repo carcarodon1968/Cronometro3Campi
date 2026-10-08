@@ -101,7 +101,7 @@ export const PWAInstallButton: React.FC = () => {
           <div className="w-full max-w-lg rounded-2xl bg-slate-900 border border-slate-800 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between pb-4 border-b border-slate-800">
               <h3 className="text-lg font-bold text-white">
-                Come aprire CronoTri a Schermo Intero su Smartphone
+                Come aprire Cronometro 3 misure a Schermo Intero su Smartphone
               </h3>
               <button
                 onClick={() => setShowGuideModal(false)}

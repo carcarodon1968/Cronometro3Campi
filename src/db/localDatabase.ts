@@ -158,9 +158,9 @@ export function exportSessionsToCSV(records: MeasurementRecord[]): string {
   const headers = [
     'ID',
     'Data_Ora',
-    'Etichetta',
+    'Nome_Misura',
     'Categoria',
-    'Contenitore_Quantita',
+    'Litri_Contenitore',
     'Flusso_l_s',
     'Flusso_60_Secondi_l',
     'Flusso_60_Minuti_l',

@@ -12,6 +12,167 @@ interface CodeFile {
 
 const ANDROID_FILES: CodeFile[] = [
   {
+    id: 'github_apk_yml',
+    filename: '.github/workflows/main.yml',
+    title: 'GitHub Action Completa — Link Web App + File .APK',
+    description:
+      'Incolla questo codice in .github/workflows/main.yml: pubblica il Link della Web App su GitHub Pages e genera contemporaneamente il file CronoTri-Android-APK.',
+    language: 'yaml',
+    code: `name: Build APK & Deploy Web App Link
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Setup Java JDK 17 for Android
+        uses: actions/setup-java@v4
+        with:
+          distribution: "temurin"
+          java-version: "17"
+
+      - name: Fix package.json versions & Build Web App
+        run: |
+          node -e '
+            const fs = require("fs");
+            const pkg = JSON.parse(fs.readFileSync("package.json", "utf8"));
+            pkg.dependencies = {
+              "react": "^19.0.0",
+              "react-dom": "^19.0.0",
+              "lucide-react": "latest"
+            };
+            pkg.devDependencies = {
+              "@tailwindcss/vite": "^4.0.0",
+              "@types/node": "^22.0.0",
+              "@types/react": "^19.0.0",
+              "@types/react-dom": "^19.0.0",
+              "@vitejs/plugin-react": "^4.3.0",
+              "tailwindcss": "^4.0.0",
+              "typescript": "^5.7.0",
+              "vite": "^6.0.0",
+              "vite-plugin-pwa": "^0.21.0"
+            };
+            fs.writeFileSync("package.json", JSON.stringify(pkg, null, 2));
+          '
+          npm install --legacy-peer-deps
+          npm run build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Web App to GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
+      - name: Publish Web App Link on GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
+
+      - name: Build Installable Android APK (Cronometro 3 misure)
+        run: |
+          npm install --no-save --legacy-peer-deps @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
+          rm -rf capacitor.config.* android
+          npx cap init "Cronometro 3 misure" "com.cronometro3misure.app" --web-dir dist
+          npx cap add android
+          npx cap copy android
+          for dir in android/app/src/main/res/mipmap-*dpi; do
+            if [ -d "\$dir" ]; then
+              cp public/pwa-512x512.png "\$dir/ic_launcher.png"
+              cp public/pwa-512x512.png "\$dir/ic_launcher_round.png"
+              cp public/pwa-maskable-512x512.png "\$dir/ic_launcher_foreground.png"
+            fi
+          done
+          chmod +x android/gradlew
+          cd android && ./gradlew assembleDebug --no-daemon
+
+      - name: Upload Cronometro-3-misure-APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cronometro-3-misure-APK
+          path: android/app/build/outputs/apk/debug/app-debug.apk`,
+  },
+  {
+    id: 'github_pages_yml',
+    filename: '.github/workflows/deploy.yml',
+    title: 'GitHub Action — Pubblica Link Web App su GitHub Pages',
+    description:
+      'Pubblica automaticamente la Web App su https://tuo-username.github.io/nome-repo/ ogni volta che salvi.',
+    language: 'yaml',
+    code: `name: Deploy Web App to GitHub Pages
+
+on:
+  push:
+    branches: ["main", "master"]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: true
+
+jobs:
+  build_and_deploy:
+    environment:
+      name: github-pages
+      url: \${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Build CronoTri PWA
+        run: npm run build
+
+      - name: Configure GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload artifact for GitHub Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4`,
+  },
+  {
     id: 'entity_dao',
     filename: 'data/MeasurementDatabase.kt',
     title: '1. Database Locale Room (Entity, DAO & Database)',

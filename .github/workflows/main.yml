@@ -73,19 +73,26 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
-      - name: Build Installable Android APK
+      - name: Build Installable Android APK (Cronometro 3 misure)
         run: |
           npm install --no-save --legacy-peer-deps @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
           rm -rf capacitor.config.* android
-          npx cap init "CronoTri" "com.cronotri.app" --web-dir dist
+          npx cap init "Cronometro 3 misure" "com.cronometro3misure.app" --web-dir dist
           npx cap add android
           npx cap copy android
+          for dir in android/app/src/main/res/mipmap-*dpi; do
+            if [ -d "$dir" ]; then
+              cp public/pwa-512x512.png "$dir/ic_launcher.png"
+              cp public/pwa-512x512.png "$dir/ic_launcher_round.png"
+              cp public/pwa-maskable-512x512.png "$dir/ic_launcher_foreground.png"
+            fi
+          done
           chmod +x android/gradlew
-       cd android && ./gradlew assembleDebug --no-daemon
-       cp app/build/outputs/apk/debug/app-debug.apk ../Cronometro_3_misure_v.1.0.1.apk
+          cd android && ./gradlew assembleDebug --no-daemon
+          cp app/build/outputs/apk/debug/app-debug.apk ../Cronometro_3_misure_v.1.0.1.apk
 
-   - name: Upload Cronometro_3_misure_v.1.0.1
-     uses: actions/upload-artifact@v4
-     with:
-       name: Cronometro_3_misure_v.1.0.1
-       path: Cronometro_3_misure_v.1.0.1.apk
+      - name: Upload Cronometro_3_misure_v.1.0.1
+        uses: actions/upload-artifact@v4
+        with:
+          name: Cronometro_3_misure_v.1.0.1
+          path: Cronometro_3_misure_v.1.0.1.apk

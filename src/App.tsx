@@ -577,9 +577,12 @@ export default function App() {
             e.preventDefault();
             setActiveTab('chrono');
           }}
-          className="text-xl font-bold tracking-tight text-orange-500 font-display text-center whitespace-nowrap"
+          className="text-xl font-bold tracking-tight text-orange-500 font-display text-center whitespace-nowrap flex items-baseline justify-center gap-2"
         >
-          Cronometro 3 misure
+          <span>Cronometro 3 misure</span>
+          <span className="text-xs font-mono-tabular font-semibold text-orange-400/90">
+            v.1.0.1
+          </span>
         </a>
 
         {/* Clean text navigation links on desktop */}

@@ -105,9 +105,7 @@ export function formatFlowValue(val: number | null | undefined): string {
   if (val === null || val === undefined || Number.isNaN(val)) {
     return '--';
   }
-  if (val >= 100) return val.toFixed(2);
-  if (val >= 10) return val.toFixed(3);
-  return val.toFixed(4);
+  return val.toFixed(3);
 }
 
 export function computeStatsFromTimes(

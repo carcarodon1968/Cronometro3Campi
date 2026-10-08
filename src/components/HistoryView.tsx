@@ -365,7 +365,7 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                           </h3>
                         </div>
                         <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400">
-                          <span>{dateStr}</span>
+                          <span className="text-amber-300">{dateStr}</span>
                           <span aria-hidden="true">·</span>
                           <span>{item.count}/3 misure</span>
                           {item.containerAmount !== null &&

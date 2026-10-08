@@ -192,7 +192,7 @@ export function exportSessionsToCSV(records: MeasurementRecord[]): string {
     escapeCsv(r.label),
     escapeCsv(r.category),
     escapeCsv(r.containerAmount ?? ''),
-    escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? r.flowRatePerSec.toFixed(4) : ''),
+    escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? r.flowRatePerSec.toFixed(3) : ''),
     escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? (r.flowRatePerSec * 60).toFixed(2) : ''),
     escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? (r.flowRatePerSec * 3600).toFixed(2) : ''),
     escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? (r.flowRatePerSec * 86400).toFixed(2) : ''),

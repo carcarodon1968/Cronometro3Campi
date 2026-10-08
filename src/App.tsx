@@ -49,6 +49,7 @@ export default function App() {
   // Stopwatch state (Always single independent trial from 00:00.00)
   const [isRunning, setIsRunning] = useState<boolean>(false);
   const [elapsedMs, setElapsedMs] = useState<number>(0);
+  const [pendingTimeMs, setPendingTimeMs] = useState<number | null>(null);
   const [activeSlot, setActiveSlot] = useState<1 | 2 | 3>(1);
   const [autoSaveOnThirdStop, setAutoSaveOnThirdStop] = useState<boolean>(true);
 
@@ -79,9 +80,29 @@ export default function App() {
   const startPerfRef = useRef<number>(0);
   const containerInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Ensure dark class is always set on root html element
+  // Ensure dark class is always set on root html element & automatically enter fullscreen in Web App mode
   useEffect(() => {
     document.documentElement.classList.add('dark');
+
+    const enterFullscreenAutomatically = () => {
+      try {
+        if (
+          typeof window !== 'undefined' &&
+          window.self === window.top &&
+          !document.fullscreenElement &&
+          document.documentElement.requestFullscreen
+        ) {
+          document.documentElement.requestFullscreen().catch(() => {});
+        }
+      } catch {
+        // Ignore if blocked by browser policy
+      }
+    };
+
+    window.addEventListener('pointerdown', enterFullscreenAutomatically, { once: true });
+    return () => {
+      window.removeEventListener('pointerdown', enterFullscreenAutomatically);
+    };
   }, []);
 
   const showToast = useCallback((msg: string) => {
@@ -217,6 +238,7 @@ export default function App() {
     }
 
     setElapsedMs(0);
+    setPendingTimeMs(null);
     startPerfRef.current = performance.now();
     setIsRunning(true);
 
@@ -230,7 +252,7 @@ export default function App() {
     rafRef.current = requestAnimationFrame(tick);
   }, [activeSlot, containerInput, isRunning, showToast, time1, time2, time3]);
 
-  // Stop the stopwatch -> automatically populate active field (1, 2, or 3) -> recalculate average of all recorded times (1, 2, or 3) -> divide Contenitore by Media
+  // Stop the stopwatch -> hold measured time in pendingTimeMs waiting for user validation (or single-measurement reset)
   const handleStop = useCallback(() => {
     if (!isRunning) return;
 
@@ -249,8 +271,19 @@ export default function App() {
     );
 
     setElapsedMs(finalMeasuredMs);
+    setPendingTimeMs(finalMeasuredMs);
     setIsRunning(false);
+  }, [isRunning]);
 
+  // Validate and record the stopped time into the active field (1, 2, or 3), compute average & flow, and auto-save to DB on 3rd datum
+  const handleValidateAndRecord = useCallback(() => {
+    if (isRunning || pendingTimeMs === null) return;
+
+    if (typeof navigator !== 'undefined' && navigator.vibrate) {
+      navigator.vibrate(35);
+    }
+
+    const finalMeasuredMs = pendingTimeMs;
     const nextT1 = activeSlot === 1 ? finalMeasuredMs : time1;
     const nextT2 = activeSlot === 2 ? finalMeasuredMs : time2;
     const nextT3 = activeSlot === 3 ? finalMeasuredMs : time3;
@@ -258,6 +291,8 @@ export default function App() {
     setTime1(nextT1);
     setTime2(nextT2);
     setTime3(nextT3);
+    setPendingTimeMs(null);
+    setElapsedMs(0);
 
     const containerVal = parseContainerAmount(containerInput);
     const statsAfterStop = computeStatsFromTimes(nextT1, nextT2, nextT3, containerVal);
@@ -285,7 +320,7 @@ export default function App() {
           ? ` · ${formatFlowValue(runningFlow)} l/s`
           : '';
       showToast(
-        `${activeSlot}° Dato (${formatTimeParts(finalMeasuredMs).full}) · Media: ${formatTimeParts(runningAvg).full}${flowToast}`
+        `${activeSlot}° Dato registrato (${formatTimeParts(finalMeasuredMs).full}) · Media: ${formatTimeParts(runningAvg).full}${flowToast}`
       );
     }
   }, [
@@ -294,6 +329,7 @@ export default function App() {
     containerInput,
     isRunning,
     lastSavedId,
+    pendingTimeMs,
     persistRecordToLocalDB,
     showToast,
     time1,
@@ -301,23 +337,34 @@ export default function App() {
     time3,
   ]);
 
-  // Reset stopwatch and 3 measurement fields
+  // Reset current measurement (if running or waiting validation) OR reset all 3 measurement fields
   const handleReset = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
       rafRef.current = null;
     }
+
+    // If running or holding an unvalidated time, reset ONLY this single measurement so user can repeat it
+    if (isRunning || pendingTimeMs !== null) {
+      setIsRunning(false);
+      setElapsedMs(0);
+      setPendingTimeMs(null);
+      showToast(`${activeSlot}° Dato azzerato — premi Avvia per ripetere la misura`);
+      return;
+    }
+
     setIsRunning(false);
     setElapsedMs(0);
+    setPendingTimeMs(null);
     setTime1(null);
     setTime2(null);
     setTime3(null);
     setActiveSlot(1);
     setLastSavedId(null);
     setEditingSlot(null);
-  }, []);
+  }, [activeSlot, isRunning, pendingTimeMs, showToast]);
 
-  // Keyboard shortcuts (Space = Start/Stop, R = Reset) when not typing in an input
+  // Keyboard shortcuts (Space = Start/Stop, Enter = Validate, R = Reset) when not typing in an input
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       if (activeTab !== 'chrono') return;
@@ -328,6 +375,9 @@ export default function App() {
         e.preventDefault();
         if (isRunning) handleStop();
         else handleStart();
+      } else if (e.key === 'Enter' && pendingTimeMs !== null && !isRunning) {
+        e.preventDefault();
+        handleValidateAndRecord();
       } else if (e.key === 'r' || e.key === 'R') {
         e.preventDefault();
         handleReset();
@@ -335,7 +385,7 @@ export default function App() {
     };
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
-  }, [activeTab, handleReset, handleStart, handleStop, isRunning]);
+  }, [activeTab, handleReset, handleStart, handleStop, handleValidateAndRecord, isRunning, pendingTimeMs]);
 
   // Clear a single measurement slot
   const handleClearSingleSlot = (slot: 1 | 2 | 3) => {
@@ -369,6 +419,7 @@ export default function App() {
       rafRef.current = null;
     }
     setIsRunning(false);
+    setPendingTimeMs(null);
     setTime1(record.time1);
     setTime2(record.time2);
     setTime3(record.time3);
@@ -518,27 +569,26 @@ export default function App() {
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-950 text-slate-100 pb-20 md:pb-10">
-      {/* Top Bar Contract: Zone 1 Brand | Zone 2 Nav Links | Zone 3 Actions */}
-      <header className="sticky top-0 z-30 h-14 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 flex items-center justify-between">
-        {/* Zone 1: Single text element wordmark */}
+      {/* Top Bar: Centered App Title in Orange + Desktop Nav */}
+      <header className="sticky top-0 z-30 bg-slate-900/95 backdrop-blur-md border-b border-slate-800 px-4 sm:px-8 py-3 flex flex-col items-center justify-center gap-2">
         <a
           href="#top"
           onClick={(e) => {
             e.preventDefault();
             setActiveTab('chrono');
           }}
-          className="text-lg font-bold tracking-tight text-white font-display whitespace-nowrap"
+          className="text-xl font-bold tracking-tight text-orange-500 font-display text-center whitespace-nowrap"
         >
           Cronometro 3 misure
         </a>
 
-        {/* Zone 2: Clean text navigation links */}
-        <nav className="hidden md:flex items-center gap-7 text-sm font-medium text-slate-300">
+        {/* Clean text navigation links on desktop */}
+        <nav className="hidden md:flex items-center justify-center gap-7 text-sm font-medium text-slate-300">
           <button
             onClick={() => setActiveTab('chrono')}
             className={`py-1 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'chrono'
-                ? 'text-orange-400 font-semibold underline underline-offset-8 decoration-2'
+                ? 'text-orange-500 font-semibold underline underline-offset-8 decoration-2'
                 : 'hover:text-white'
             }`}
           >
@@ -548,7 +598,7 @@ export default function App() {
             onClick={() => setActiveTab('history')}
             className={`py-1 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'history'
-                ? 'text-orange-400 font-semibold underline underline-offset-8 decoration-2'
+                ? 'text-orange-500 font-semibold underline underline-offset-8 decoration-2'
                 : 'hover:text-white'
             }`}
           >
@@ -558,7 +608,7 @@ export default function App() {
             onClick={() => setActiveTab('analytics')}
             className={`py-1 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'analytics'
-                ? 'text-orange-400 font-semibold underline underline-offset-8 decoration-2'
+                ? 'text-orange-500 font-semibold underline underline-offset-8 decoration-2'
                 : 'hover:text-white'
             }`}
           >
@@ -568,18 +618,13 @@ export default function App() {
             onClick={() => setActiveTab('android_code')}
             className={`py-1 transition-colors whitespace-nowrap cursor-pointer ${
               activeTab === 'android_code'
-                ? 'text-orange-400 font-semibold underline underline-offset-8 decoration-2'
+                ? 'text-orange-500 font-semibold underline underline-offset-8 decoration-2'
                 : 'hover:text-white'
             }`}
           >
             Codice Android
           </button>
         </nav>
-
-        {/* Zone 3: Primary Action */}
-        <div className="flex items-center gap-2.5">
-          <PWAInstallButton />
-        </div>
       </header>
 
       {/* Non-intrusive Toast Notification */}
@@ -590,8 +635,8 @@ export default function App() {
         </div>
       )}
 
-      {/* Main Content Container */}
-      <main className="flex-1 w-full max-w-6xl mx-auto px-4 sm:px-8 pt-6">
+      {/* Main Content Container (Full screen width) */}
+      <main className="flex-1 w-full px-3 sm:px-6 pt-4">
         {activeTab === 'chrono' && (
           <div className="space-y-6">
             {/* TOP SECTION BEFORE THE STOPWATCH: Categoria (with Flusso), Etichetta Sessione, and mandatory Contenitore */}
@@ -694,6 +739,8 @@ export default function App() {
                     <span className="font-semibold text-slate-200">
                       {isRunning
                         ? `Acquisizione ${activeSlot}° Dato in corso`
+                        : pendingTimeMs !== null
+                        ? `${activeSlot}° Dato fermato — Convalida o Azzera`
                         : `Pronto per ${activeSlot}° Dato (su 3)`}
                     </span>
                   </div>
@@ -718,7 +765,7 @@ export default function App() {
                   </div>
 
                   {/* Step Indicator Buttons for Slot 1, 2, 3 */}
-                  <div className="mt-5 flex items-center justify-center gap-3 text-xs text-slate-400">
+                  <div className="mt-5 flex flex-wrap items-center justify-center gap-2.5 text-xs text-slate-400">
                     {[1, 2, 3].map((slotNum) => {
                       const val = slotNum === 1 ? time1 : slotNum === 2 ? time2 : time3;
                       const isTarget = activeSlot === slotNum;
@@ -726,7 +773,7 @@ export default function App() {
                         <button
                           key={slotNum}
                           onClick={() => !isRunning && setActiveSlot(slotNum as 1 | 2 | 3)}
-                          className={`min-h-[34px] px-3 py-1 rounded-lg transition-colors cursor-pointer font-medium ${
+                          className={`min-h-[34px] px-3 py-1 rounded-lg transition-colors cursor-pointer font-mono-tabular font-medium ${
                             isTarget
                               ? 'bg-white text-slate-900 font-semibold'
                               : val !== null
@@ -734,44 +781,62 @@ export default function App() {
                               : 'bg-slate-800 text-slate-400'
                           }`}
                         >
-                          {slotNum}° Dato {val !== null ? '✓' : ''}
+                          {slotNum}° Dato{val !== null ? `: ${formatTimeParts(val).full}` : ''}
                         </button>
                       );
                     })}
                   </div>
                 </div>
 
-                {/* Primary Tactile Controls (Start / Stop / Reset) */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
-                  {!isRunning ? (
+                {/* Primary Tactile Controls (Start / Stop / Reset + Convalida e Registra) */}
+                <div className="space-y-3 pt-2">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    {!isRunning ? (
+                      <button
+                        onClick={handleStart}
+                        className="sm:col-span-2 min-h-[54px] px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 active:scale-[0.99] text-white font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
+                      >
+                        <Play className="w-5 h-5 fill-current shrink-0" />
+                        <span>
+                          {pendingTimeMs !== null
+                            ? `Ripeti (${activeSlot}° Dato)`
+                            : time1 !== null && time2 !== null && time3 !== null && activeSlot === 1
+                            ? 'Avvia Nuova Terna (1° Dato)'
+                            : `Avvia (${activeSlot}° Dato)`}
+                        </span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={handleStop}
+                        className="sm:col-span-2 min-h-[54px] px-6 py-3.5 rounded-xl bg-white hover:bg-slate-100 active:scale-[0.99] text-slate-950 font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
+                      >
+                        <Square className="w-5 h-5 fill-current text-orange-600 shrink-0" />
+                        <span>Stop ({activeSlot}° Dato)</span>
+                      </button>
+                    )}
+
                     <button
-                      onClick={handleStart}
-                      className="sm:col-span-2 min-h-[54px] px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 active:scale-[0.99] text-white font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
+                      onClick={handleReset}
+                      disabled={!isRunning && pendingTimeMs === null && elapsedMs === 0 && time1 === null && time2 === null && time3 === null}
+                      className="min-h-[54px] px-4 py-3.5 rounded-xl border border-slate-700 hover:bg-slate-800 disabled:opacity-40 text-slate-200 font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                     >
-                      <Play className="w-5 h-5 fill-current shrink-0" />
+                      <RotateCcw className="w-4 h-4 shrink-0" />
                       <span>
-                        {time1 !== null && time2 !== null && time3 !== null && activeSlot === 1
-                          ? 'Avvia Nuova Terna (1° Dato)'
-                          : `Avvia (${activeSlot}° Dato)`}
+                        {isRunning || pendingTimeMs !== null
+                          ? `Azzera ${activeSlot}°`
+                          : 'Azzera Tutto'}
                       </span>
                     </button>
-                  ) : (
-                    <button
-                      onClick={handleStop}
-                      className="sm:col-span-2 min-h-[54px] px-6 py-3.5 rounded-xl bg-white hover:bg-slate-100 active:scale-[0.99] text-slate-950 font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
-                    >
-                      <Square className="w-5 h-5 fill-current text-orange-600 shrink-0" />
-                      <span>Stop & Registra {activeSlot}° Dato</span>
-                    </button>
-                  )}
+                  </div>
 
+                  {/* Dedicated Validation & Recording Button */}
                   <button
-                    onClick={handleReset}
-                    disabled={isRunning && elapsedMs === 0}
-                    className="min-h-[54px] px-4 py-3.5 rounded-xl border border-slate-700 hover:bg-slate-800 text-slate-200 font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                    onClick={handleValidateAndRecord}
+                    disabled={isRunning || pendingTimeMs === null}
+                    className="w-full min-h-[54px] px-6 py-3.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:bg-slate-800 disabled:text-slate-500 active:scale-[0.99] text-white font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
                   >
-                    <RotateCcw className="w-4 h-4 shrink-0" />
-                    <span>Azzera</span>
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    <span>Convalida e Registra {activeSlot}° dato</span>
                   </button>
                 </div>
 
@@ -905,129 +970,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* The 3 Automatic Measurement Fields */}
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                  {slotsData.map((item) => {
-                    const isNextTarget = activeSlot === item.slot;
-                    const hasValue = item.valueMs !== null;
-                    const parts = formatTimeParts(item.valueMs);
-                    const singleSlotFlow = computeFlowFromAverage(
-                      parsedContainerAmount,
-                      item.valueMs
-                    );
-
-                    return (
-                      <div
-                        key={item.slot}
-                        onClick={() => {
-                          if (!isRunning && editingSlot !== item.slot) {
-                            setActiveSlot(item.slot);
-                          }
-                        }}
-                        className={`bg-slate-900 rounded-2xl p-5 border transition-all cursor-pointer ${
-                          isNextTarget
-                            ? 'border-orange-500 ring-2 ring-orange-500/20'
-                            : 'border-slate-800 hover:border-slate-700'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="text-sm font-bold text-white">
-                            {item.title}
-                          </span>
-                          <span className="text-[11px] font-medium text-slate-400">
-                            {isNextTarget
-                              ? isRunning
-                                ? 'In misura...'
-                                : 'Prossimo Stop'
-                              : hasValue
-                              ? 'Acquisito'
-                              : 'In attesa'}
-                          </span>
-                        </div>
-
-                        {/* Time Value or Manual Input */}
-                        {editingSlot === item.slot ? (
-                          <div
-                            className="mt-3 space-y-2"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <input
-                              type="text"
-                              value={manualInputValue}
-                              onChange={(e) => setManualInputValue(e.target.value)}
-                              placeholder="es. 00:08.45 o 8.45"
-                              autoFocus
-                              className="w-full min-h-[38px] px-3 py-1.5 text-sm font-mono-tabular bg-slate-950 border border-slate-700 rounded-lg text-white"
-                            />
-                            <div className="flex items-center gap-2">
-                              <button
-                                onClick={() => handleSaveManualSlot(item.slot)}
-                                className="min-h-[34px] px-3 py-1 rounded-lg bg-white text-slate-900 text-xs font-semibold cursor-pointer"
-                              >
-                                Applica
-                              </button>
-                              <button
-                                onClick={() => setEditingSlot(null)}
-                                className="min-h-[34px] px-2.5 py-1 rounded-lg bg-slate-800 text-slate-300 text-xs cursor-pointer"
-                              >
-                                Annulla
-                              </button>
-                            </div>
-                          </div>
-                        ) : (
-                          <div className="mt-3">
-                            <div className="font-mono-tabular text-2xl sm:text-3xl font-bold text-white tracking-tight">
-                              {hasValue ? parts.full : '--:--.--'}
-                            </div>
-                            <div className="mt-1 flex items-center justify-between text-xs text-slate-400 font-mono-tabular">
-                              <span>
-                                {hasValue
-                                  ? `${(item.valueMs! / 1000).toFixed(2)} s`
-                                  : item.subtitle}
-                              </span>
-                              {singleSlotFlow !== null && (
-                                <span className="text-emerald-400 font-semibold">
-                                  {formatFlowValue(singleSlotFlow)} l/s
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Actions for single slot: Manual Edit or Clear */}
-                        <div
-                          className="mt-4 pt-3 border-t border-slate-800 flex items-center justify-between text-xs"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            onClick={() => {
-                              setEditingSlot(item.slot);
-                              setManualInputValue(
-                                item.valueMs !== null ? (item.valueMs / 1000).toFixed(2) : ''
-                              );
-                            }}
-                            className="min-h-[32px] text-slate-400 hover:text-white flex items-center gap-1 cursor-pointer"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                            <span>Modifica</span>
-                          </button>
-
-                          {hasValue && (
-                            <button
-                              onClick={() => handleClearSingleSlot(item.slot)}
-                              className="min-h-[32px] text-slate-400 hover:text-rose-400 flex items-center gap-1 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Svuota</span>
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-
-                {/* PULSANTE SALVA NEL DB ALLA FINE DOPO IL TERZO DATO */}
+                {/* PULSANTE SALVA NEL DB LOCALE */}
                 <div className="pt-1">
                   <button
                     onClick={() =>
@@ -1121,7 +1064,7 @@ export default function App() {
                           </div>
                           {/* Clean unboxed metadata with · separators */}
                           <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-slate-300 font-mono-tabular">
-                            <span className="font-sans text-slate-400">{timeStr}</span>
+                            <span className="font-sans text-amber-300">{timeStr}</span>
                             {item.containerAmount !== null &&
                               item.containerAmount !== undefined && (
                                 <>

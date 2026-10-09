@@ -186,30 +186,37 @@ export function exportSessionsToCSV(records: MeasurementRecord[]): string {
     return `"${str}"`;
   };
 
-  const rows = records.map((r) => [
-    escapeCsv(r.id),
-    escapeCsv(new Date(r.createdAt).toISOString()),
-    escapeCsv(r.label),
-    escapeCsv(r.category),
-    escapeCsv(r.containerAmount ?? ''),
-    escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? r.flowRatePerSec.toFixed(3) : ''),
-    escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? (r.flowRatePerSec * 60).toFixed(2) : ''),
-    escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? (r.flowRatePerSec * 3600).toFixed(2) : ''),
-    escapeCsv(r.flowRatePerSec !== null && r.flowRatePerSec !== undefined ? (r.flowRatePerSec * 86400).toFixed(2) : ''),
-    escapeCsv(r.time1),
-    escapeCsv(r.time2),
-    escapeCsv(r.time3),
-    escapeCsv(r.averageAfterStop1),
-    escapeCsv(r.averageAfterStop2),
-    escapeCsv(r.averageAfterStop3),
-    escapeCsv(r.finalAverage),
-    escapeCsv((r.finalAverage / 1000).toFixed(3)),
-    escapeCsv(r.minTime),
-    escapeCsv(r.maxTime),
-    escapeCsv(r.spread),
-    escapeCsv(r.mode),
-    escapeCsv(r.notes),
-  ]);
+  const rows = records.map((r) => {
+    const flowSec = r.flowRatePerSec ?? null;
+    const flowMin = r.flowRatePerMin ?? (flowSec !== null ? flowSec * 60 : null);
+    const flowHour = r.flowRatePerHour ?? (flowSec !== null ? flowSec * 3600 : null);
+    const flow24h = r.flowRatePer24Hours ?? (flowSec !== null ? flowSec * 86400 : null);
+
+    return [
+      escapeCsv(r.id),
+      escapeCsv(new Date(r.createdAt).toISOString()),
+      escapeCsv(r.label),
+      escapeCsv(r.category),
+      escapeCsv(r.containerAmount ?? ''),
+      escapeCsv(flowSec !== null ? flowSec.toFixed(3) : ''),
+      escapeCsv(flowMin !== null ? flowMin.toFixed(2) : ''),
+      escapeCsv(flowHour !== null ? flowHour.toFixed(2) : ''),
+      escapeCsv(flow24h !== null ? flow24h.toFixed(2) : ''),
+      escapeCsv(r.time1),
+      escapeCsv(r.time2),
+      escapeCsv(r.time3),
+      escapeCsv(r.averageAfterStop1),
+      escapeCsv(r.averageAfterStop2),
+      escapeCsv(r.averageAfterStop3),
+      escapeCsv(r.finalAverage),
+      escapeCsv((r.finalAverage / 1000).toFixed(3)),
+      escapeCsv(r.minTime),
+      escapeCsv(r.maxTime),
+      escapeCsv(r.spread),
+      escapeCsv(r.mode),
+      escapeCsv(r.notes),
+    ];
+  });
 
   return [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
 }

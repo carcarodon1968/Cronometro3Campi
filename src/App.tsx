@@ -167,6 +167,9 @@ export default function App() {
         notes: sessionNotes.trim(),
         containerAmount: containerVal,
         flowRatePerSec: stats.currentFlowPerSec,
+        flowRatePerMin: stats.currentFlowPerMin,
+        flowRatePerHour: stats.currentFlowPerHour,
+        flowRatePer24Hours: stats.currentFlowPer24Hours,
         time1: t1,
         time2: t2,
         time3: t3,
@@ -211,9 +214,9 @@ export default function App() {
     ]
   );
 
-  // Start the stopwatch (Requires Contenitore to be filled in before starting!)
+  // Start the stopwatch (Requires Contenitore to be filled in before starting, and blocked if a stopped measurement is awaiting validation/reset)
   const handleStart = useCallback(() => {
-    if (isRunning) return;
+    if (isRunning || pendingTimeMs !== null) return;
 
     const validContainer = parseContainerAmount(containerInput);
     if (validContainer === null) {
@@ -250,7 +253,7 @@ export default function App() {
     };
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [activeSlot, containerInput, isRunning, showToast, time1, time2, time3]);
+  }, [activeSlot, containerInput, isRunning, pendingTimeMs, showToast, time1, time2, time3]);
 
   // Stop the stopwatch -> hold measured time in pendingTimeMs waiting for user validation (or single-measurement reset)
   const handleStop = useCallback(() => {
@@ -337,7 +340,7 @@ export default function App() {
     time3,
   ]);
 
-  // Reset current measurement (if running or waiting validation) OR reset all 3 measurement fields
+  // Reset current measurement (if running or waiting validation) OR reset all 3 measurement fields (only after saving to DB)
   const handleReset = useCallback(() => {
     if (rafRef.current !== null) {
       cancelAnimationFrame(rafRef.current);
@@ -353,6 +356,11 @@ export default function App() {
       return;
     }
 
+    // Block "Azzera Tutto" until the measurements are saved in the database
+    if (lastSavedId === null) {
+      return;
+    }
+
     setIsRunning(false);
     setElapsedMs(0);
     setPendingTimeMs(null);
@@ -362,7 +370,7 @@ export default function App() {
     setActiveSlot(1);
     setLastSavedId(null);
     setEditingSlot(null);
-  }, [activeSlot, isRunning, pendingTimeMs, showToast]);
+  }, [activeSlot, isRunning, lastSavedId, pendingTimeMs, showToast]);
 
   // Keyboard shortcuts (Space = Start/Stop, Enter = Validate, R = Reset) when not typing in an input
   useEffect(() => {
@@ -581,7 +589,7 @@ export default function App() {
         >
           <span>Cronometro 3 misure</span>
           <span className="text-xs font-mono-tabular font-semibold text-orange-400/90">
-            v.1.0.1
+            v.1.0.2
           </span>
         </a>
 
@@ -775,8 +783,13 @@ export default function App() {
                       return (
                         <button
                           key={slotNum}
-                          onClick={() => !isRunning && setActiveSlot(slotNum as 1 | 2 | 3)}
-                          className={`min-h-[34px] px-3 py-1 rounded-lg transition-colors cursor-pointer font-mono-tabular font-medium ${
+                          disabled={isRunning || pendingTimeMs !== null}
+                          onClick={() =>
+                            !isRunning &&
+                            pendingTimeMs === null &&
+                            setActiveSlot(slotNum as 1 | 2 | 3)
+                          }
+                          className={`min-h-[34px] px-3 py-1 rounded-lg transition-colors cursor-pointer disabled:cursor-not-allowed font-mono-tabular font-medium ${
                             isTarget
                               ? 'bg-white text-slate-900 font-semibold'
                               : val !== null
@@ -797,13 +810,16 @@ export default function App() {
                     {!isRunning ? (
                       <button
                         onClick={handleStart}
-                        className="sm:col-span-2 min-h-[54px] px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 active:scale-[0.99] text-white font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
+                        disabled={pendingTimeMs !== null}
+                        className="sm:col-span-2 min-h-[54px] px-6 py-3.5 rounded-xl bg-orange-600 hover:bg-orange-500 disabled:bg-slate-800 disabled:text-slate-500 disabled:cursor-not-allowed active:scale-[0.99] disabled:active:scale-100 text-white font-semibold text-base transition-all flex items-center justify-center gap-2.5 shadow-sm cursor-pointer whitespace-nowrap"
                       >
                         <Play className="w-5 h-5 fill-current shrink-0" />
                         <span>
-                          {pendingTimeMs !== null
-                            ? `Ripeti (${activeSlot}° Dato)`
-                            : time1 !== null && time2 !== null && time3 !== null && activeSlot === 1
+                          {time1 !== null &&
+                          time2 !== null &&
+                          time3 !== null &&
+                          activeSlot === 1 &&
+                          pendingTimeMs === null
                             ? 'Avvia Nuova Terna (1° Dato)'
                             : `Avvia (${activeSlot}° Dato)`}
                         </span>
@@ -820,8 +836,13 @@ export default function App() {
 
                     <button
                       onClick={handleReset}
-                      disabled={!isRunning && pendingTimeMs === null && elapsedMs === 0 && time1 === null && time2 === null && time3 === null}
-                      className="min-h-[54px] px-4 py-3.5 rounded-xl border border-slate-700 hover:bg-slate-800 disabled:opacity-40 text-slate-200 font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
+                      disabled={
+                        isRunning || pendingTimeMs !== null
+                          ? false
+                          : lastSavedId === null ||
+                            (time1 === null && time2 === null && time3 === null)
+                      }
+                      className="min-h-[54px] px-4 py-3.5 rounded-xl border border-slate-700 hover:bg-slate-800 disabled:bg-slate-800/60 disabled:text-slate-500 disabled:border-slate-800 disabled:cursor-not-allowed text-slate-200 font-semibold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer whitespace-nowrap"
                     >
                       <RotateCcw className="w-4 h-4 shrink-0" />
                       <span>
@@ -1047,6 +1068,15 @@ export default function App() {
                     const itemFlow =
                       item.flowRatePerSec ??
                       computeFlowFromAverage(item.containerAmount, item.finalAverage);
+                    const itemFlow60s =
+                      item.flowRatePerMin ??
+                      (itemFlow !== null ? itemFlow * 60 : null);
+                    const itemFlow60m =
+                      item.flowRatePerHour ??
+                      (itemFlow !== null ? itemFlow * 3600 : null);
+                    const itemFlow24h =
+                      item.flowRatePer24Hours ??
+                      (itemFlow !== null ? itemFlow * 86400 : null);
 
                     return (
                       <div
@@ -1084,6 +1114,28 @@ export default function App() {
                             <span aria-hidden="true">·</span>
                             <span>3°: {formatTimeParts(item.time3).full}</span>
                           </div>
+                          {itemFlow !== null && (
+                            <div className="mt-2 flex flex-col gap-1 text-xs font-mono-tabular text-slate-300">
+                              <div>
+                                <span className="text-slate-400 font-sans">60 Secondi:</span>{' '}
+                                <strong className="text-emerald-400">
+                                  {itemFlow60s !== null ? `${itemFlow60s.toFixed(2)} l` : '--'}
+                                </strong>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-sans">60 Minuti:</span>{' '}
+                                <strong className="text-emerald-400">
+                                  {itemFlow60m !== null ? `${itemFlow60m.toFixed(2)} l` : '--'}
+                                </strong>
+                              </div>
+                              <div>
+                                <span className="text-slate-400 font-sans">24 Ore:</span>{' '}
+                                <strong className="text-emerald-400">
+                                  {itemFlow24h !== null ? `${itemFlow24h.toFixed(2)} l` : '--'}
+                                </strong>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center justify-between sm:justify-end gap-5">

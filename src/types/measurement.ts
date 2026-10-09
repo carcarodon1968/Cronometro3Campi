@@ -15,6 +15,9 @@ export interface MeasurementRecord {
   notes: string;
   containerAmount?: number | null;
   flowRatePerSec?: number | null;
+  flowRatePerMin?: number | null;
+  flowRatePerHour?: number | null;
+  flowRatePer24Hours?: number | null;
   time1: number | null;
   time2: number | null;
   time3: number | null;

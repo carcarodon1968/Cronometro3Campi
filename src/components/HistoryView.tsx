@@ -150,6 +150,9 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
       category: editCategory || record.category,
       containerAmount: parsedContainer,
       flowRatePerSec: updatedFlow,
+      flowRatePerMin: updatedFlow !== null ? updatedFlow * 60 : null,
+      flowRatePerHour: updatedFlow !== null ? updatedFlow * 3600 : null,
+      flowRatePer24Hours: updatedFlow !== null ? updatedFlow * 86400 : null,
       notes: editNotes.trim(),
     });
     setEditingId(null);
@@ -295,6 +298,15 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
             const calculatedFlow =
               item.flowRatePerSec ??
               computeFlowFromAverage(item.containerAmount, item.finalAverage);
+            const flow60s =
+              item.flowRatePerMin ??
+              (calculatedFlow !== null ? calculatedFlow * 60 : null);
+            const flow60m =
+              item.flowRatePerHour ??
+              (calculatedFlow !== null ? calculatedFlow * 3600 : null);
+            const flow24h =
+              item.flowRatePer24Hours ??
+              (calculatedFlow !== null ? calculatedFlow * 86400 : null);
 
             return (
               <div
@@ -476,27 +488,25 @@ export const HistoryView: React.FC<HistoryViewProps> = ({
                 </div>
 
                 {calculatedFlow !== null && (
-                  <div className="mt-3 pt-3 border-t border-slate-800 flex flex-wrap items-center gap-x-6 gap-y-1 text-xs font-mono-tabular text-slate-300">
-                    <span>
+                  <div className="mt-3 pt-3 border-t border-slate-800 flex flex-col gap-1 text-xs font-mono-tabular text-slate-300">
+                    <div>
                       <span className="text-slate-400 font-sans">60 Secondi:</span>{' '}
                       <strong className="text-emerald-400">
-                        {(calculatedFlow * 60).toFixed(2)} l
+                        {flow60s !== null ? `${flow60s.toFixed(2)} l` : '--'}
                       </strong>
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>
+                    </div>
+                    <div>
                       <span className="text-slate-400 font-sans">60 Minuti:</span>{' '}
                       <strong className="text-emerald-400">
-                        {(calculatedFlow * 3600).toFixed(2)} l
+                        {flow60m !== null ? `${flow60m.toFixed(2)} l` : '--'}
                       </strong>
-                    </span>
-                    <span aria-hidden="true">·</span>
-                    <span>
+                    </div>
+                    <div>
                       <span className="text-slate-400 font-sans">24 Ore:</span>{' '}
                       <strong className="text-emerald-400">
-                        {(calculatedFlow * 86400).toFixed(2)} l
+                        {flow24h !== null ? `${flow24h.toFixed(2)} l` : '--'}
                       </strong>
-                    </span>
+                    </div>
                   </div>
                 )}
               </div>

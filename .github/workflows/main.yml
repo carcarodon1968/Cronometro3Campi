@@ -6,7 +6,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
@@ -73,6 +73,12 @@ jobs:
         id: deployment
         uses: actions/deploy-pages@v4
 
+      - name: Read App Version from package.json
+        id: pkg
+        run: |
+          VERSION=$(node -p "require('./package.json').version || '1.0.2'")
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
       - name: Build Installable Android APK (Cronometro 3 misure)
         run: |
           npm install --no-save --legacy-peer-deps @capacitor/core@6 @capacitor/cli@6 @capacitor/android@6
@@ -89,10 +95,24 @@ jobs:
           done
           chmod +x android/gradlew
           cd android && ./gradlew assembleDebug --no-daemon
-          cp app/build/outputs/apk/debug/app-debug.apk ../Cronometro_3_misure_v.1.0.1.apk
+          cp app/build/outputs/apk/debug/app-debug.apk ../Cronometro_3_misure_v.${{ steps.pkg.outputs.version }}.apk
+          cd ../dist && zip -r ../Cronometro_3_misure_WebApp_v.${{ steps.pkg.outputs.version }}.zip .
 
-      - name: Upload Cronometro_3_misure_v.1.0.1
+      - name: Upload APK Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: Cronometro_3_misure_v.1.0.1
-          path: Cronometro_3_misure_v.1.0.1.apk
+          name: Cronometro_3_misure_v.${{ steps.pkg.outputs.version }}
+          path: Cronometro_3_misure_v.${{ steps.pkg.outputs.version }}.apk
+
+      - name: Publish Release in GitHub Releases Archive
+        uses: softprops/action-gh-release@v2
+        continue-on-error: true
+        with:
+          tag_name: v.${{ steps.pkg.outputs.version }}
+          name: Cronometro_3_misure_v.${{ steps.pkg.outputs.version }}
+          body: "Release automatica Cronometro_3_misure_v.${{ steps.pkg.outputs.version }} (APK Android installabile + Web App)"
+          draft: false
+          prerelease: false
+          files: |
+            Cronometro_3_misure_v.${{ steps.pkg.outputs.version }}.apk
+            Cronometro_3_misure_WebApp_v.${{ steps.pkg.outputs.version }}.zip
